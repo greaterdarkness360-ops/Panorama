@@ -29,6 +29,9 @@ fun PanoramaMainScreen(
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = {
+                        onEvent(PanoramaUiEvent.OnClearLetterFilter)
+                    },
                     onDoubleTap = {
                         onEvent(PanoramaUiEvent.OnSwitchLauncherRequested)
                     },
@@ -42,10 +45,7 @@ fun PanoramaMainScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            HeaderClockDate(
-                currentTimeString = uiState.currentTimeString,
-                currentDateString = uiState.currentDateString
-            )
+            HeaderClockDate()
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -55,7 +55,7 @@ fun PanoramaMainScreen(
                     .weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val displayApps = if (uiState.isScrubbing || uiState.selectedLetter != null) {
+                val displayApps = if (uiState.selectedLetter != null && uiState.selectedLetter != '☆') {
                     uiState.filteredApps
                 } else {
                     uiState.favoriteApps
@@ -63,7 +63,6 @@ fun PanoramaMainScreen(
 
                 AppListRightAligned(
                     apps = displayApps,
-                    isScrubbing = uiState.isScrubbing || uiState.selectedLetter != null,
                     selectedLetter = uiState.selectedLetter,
                     onAppClick = { app ->
                         onEvent(PanoramaUiEvent.OnAppClicked(app))
@@ -74,7 +73,7 @@ fun PanoramaMainScreen(
                 AlphabetWaveScrubber(
                     selectedLetter = uiState.selectedLetter,
                     onLetterSelected = { letter ->
-                        onEvent(PanoramaUiEvent.OnLetterScrub(letter))
+                        onEvent(PanoramaUiEvent.OnLetterSelected(letter))
                     }
                 )
             }

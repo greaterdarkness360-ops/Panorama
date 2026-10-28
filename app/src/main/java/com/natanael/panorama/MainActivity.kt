@@ -3,6 +3,7 @@ package com.natanael.panorama
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -35,6 +36,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             PanoramaTheme {
                 val uiState by viewModel.uiState.collectAsState()
+
+                BackHandler(enabled = uiState.selectedLetter != null || uiState.isSettingsOpen) {
+                    if (uiState.isSettingsOpen) {
+                        viewModel.onEvent(PanoramaUiEvent.SetSettingsVisible(false))
+                    } else if (uiState.selectedLetter != null) {
+                        viewModel.onEvent(PanoramaUiEvent.OnClearLetterFilter)
+                    }
+                }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),

@@ -14,39 +14,39 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class SettingsRepository(private val context: Context) {
 
     companion object {
-        private val HIDDEN_PACKAGES_KEY = stringSetPreferencesKey("hidden_packages")
-        private val FAVORITE_PACKAGES_KEY = stringSetPreferencesKey("favorite_packages")
+        private val HIDDEN_KEYS_KEY = stringSetPreferencesKey("hidden_app_keys")
+        private val FAVORITE_KEYS_KEY = stringSetPreferencesKey("favorite_app_keys")
     }
 
-    val hiddenPackagesFlow: Flow<Set<String>> = context.dataStore.data.map { preferences ->
-        preferences[HIDDEN_PACKAGES_KEY] ?: emptySet()
+    val hiddenKeysFlow: Flow<Set<String>> = context.dataStore.data.map { preferences ->
+        preferences[HIDDEN_KEYS_KEY] ?: emptySet()
     }
 
-    val favoritePackagesFlow: Flow<Set<String>> = context.dataStore.data.map { preferences ->
-        preferences[FAVORITE_PACKAGES_KEY] ?: emptySet()
+    val favoriteKeysFlow: Flow<Set<String>> = context.dataStore.data.map { preferences ->
+        preferences[FAVORITE_KEYS_KEY] ?: emptySet()
     }
 
-    suspend fun toggleAppVisibility(packageName: String, hide: Boolean) {
+    suspend fun toggleAppVisibility(uniqueKey: String, hide: Boolean) {
         context.dataStore.edit { preferences ->
-            val current = preferences[HIDDEN_PACKAGES_KEY]?.toMutableSet() ?: mutableSetOf()
+            val current = preferences[HIDDEN_KEYS_KEY]?.toMutableSet() ?: mutableSetOf()
             if (hide) {
-                current.add(packageName)
+                current.add(uniqueKey)
             } else {
-                current.remove(packageName)
+                current.remove(uniqueKey)
             }
-            preferences[HIDDEN_PACKAGES_KEY] = current
+            preferences[HIDDEN_KEYS_KEY] = current
         }
     }
 
-    suspend fun toggleFavorite(packageName: String, favorite: Boolean) {
+    suspend fun toggleFavorite(uniqueKey: String, favorite: Boolean) {
         context.dataStore.edit { preferences ->
-            val current = preferences[FAVORITE_PACKAGES_KEY]?.toMutableSet() ?: mutableSetOf()
+            val current = preferences[FAVORITE_KEYS_KEY]?.toMutableSet() ?: mutableSetOf()
             if (favorite) {
-                current.add(packageName)
+                current.add(uniqueKey)
             } else {
-                current.remove(packageName)
+                current.remove(uniqueKey)
             }
-            preferences[FAVORITE_PACKAGES_KEY] = current
+            preferences[FAVORITE_KEYS_KEY] = current
         }
     }
 }

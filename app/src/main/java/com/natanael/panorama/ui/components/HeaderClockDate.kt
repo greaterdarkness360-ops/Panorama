@@ -13,7 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -25,14 +29,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun HeaderClockDate(
-    currentTimeString: String,
-    currentDateString: String,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var timeString by remember { mutableStateOf("") }
+    var dateString by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault())
+        while (true) {
+            val now = Date()
+            timeString = timeFormat.format(now)
+            dateString = dateFormat.format(now)
+            delay(10000L) // Update every 10 seconds locally without touching ViewModel state
+        }
+    }
+
     val shadowStyle = Shadow(
         color = Color.Black.copy(alpha = 0.6f),
         offset = Offset(2f, 2f),
@@ -46,7 +66,7 @@ fun HeaderClockDate(
         horizontalAlignment = Alignment.End
     ) {
         Text(
-            text = currentTimeString.ifEmpty { "00:00" },
+            text = timeString.ifEmpty { "00:00" },
             style = TextStyle(
                 fontSize = 54.sp,
                 fontWeight = FontWeight.Light,
@@ -65,7 +85,7 @@ fun HeaderClockDate(
         Spacer(modifier = Modifier.height(2.dp))
 
         Text(
-            text = currentDateString.ifEmpty { "Panorama" },
+            text = dateString.ifEmpty { "Panorama" },
             style = TextStyle(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,

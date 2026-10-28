@@ -48,7 +48,6 @@ import com.natanael.panorama.R
 import com.natanael.panorama.model.AppItem
 import com.natanael.panorama.model.PanoramaUiEvent
 import com.natanael.panorama.model.PanoramaUiState
-import com.natanael.panorama.ui.utils.rememberDrawableBitmap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -146,15 +145,15 @@ fun SettingsSheet(
             ) {
                 items(
                     items = filteredList,
-                    key = { "${it.packageName}/${it.activityName}" }
+                    key = { app -> app.uniqueKey }
                 ) { app ->
                     SettingsAppRow(
                         app = app,
-                        onToggleFavorite = { hideOrFav ->
-                            onEvent(PanoramaUiEvent.OnToggleFavorite(app.packageName, hideOrFav))
+                        onToggleFavorite = { fav ->
+                            onEvent(PanoramaUiEvent.OnToggleFavorite(app.uniqueKey, fav))
                         },
                         onToggleVisibility = { hide ->
-                            onEvent(PanoramaUiEvent.OnToggleAppVisibility(app.packageName, hide))
+                            onEvent(PanoramaUiEvent.OnToggleAppVisibility(app.uniqueKey, hide))
                         }
                     )
                 }
@@ -182,8 +181,6 @@ private fun SettingsAppRow(
     onToggleFavorite: (Boolean) -> Unit,
     onToggleVisibility: (Boolean) -> Unit
 ) {
-    val bitmap = rememberDrawableBitmap(drawable = app.icon)
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -195,9 +192,9 @@ private fun SettingsAppRow(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (bitmap != null) {
+            if (app.iconBitmap != null) {
                 Image(
-                    bitmap = bitmap,
+                    bitmap = app.iconBitmap,
                     contentDescription = app.label,
                     modifier = Modifier
                         .size(36.dp)
@@ -208,11 +205,12 @@ private fun SettingsAppRow(
             }
 
             Column {
+                val labelText = if (app.isClone) "${app.label} (Clone)" else app.label
                 Text(
-                    text = app.label,
+                    text = labelText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (app.isHidden) Color.Gray else Color.White
+                    color = if (app.isHidden) Color.Gray else if (app.isClone) Color(0xFF80D8FF) else Color.White
                 )
                 Text(
                     text = app.packageName,

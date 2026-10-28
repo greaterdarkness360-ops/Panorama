@@ -1,7 +1,7 @@
 # AGENTS.md - Panorama Android Home Launcher Guidelines
 
 ## Project Overview
-"Panorama" (package: `com.natanael.panorama`) is a minimal, elegant Android Home Launcher built with Jetpack Compose, Kotlin, MVI architecture, and StateFlow.
+"Panorama" (package: `com.natanael.panorama`) is a high-performance 120FPS minimal Android Home Launcher supporting Dual/Clone Apps built with Jetpack Compose, Kotlin, MVI architecture, and StateFlow.
 
 ## Build & Gradle Rules
 - Build system: Kotlin DSL (`build.gradle.kts`, `settings.gradle.kts`).
@@ -20,15 +20,21 @@ The following data structures are frozen contracts:
 ```kotlin
 package com.natanael.panorama.model
 
-import android.graphics.drawable.Drawable
+import android.content.ComponentName
+import android.os.UserHandle
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.ImageBitmap
 
 @Immutable
 data class AppItem(
+    val uniqueKey: String,
     val packageName: String,
     val activityName: String,
+    val componentName: ComponentName,
+    val userHandle: UserHandle,
     val label: String,
-    val icon: Drawable? = null,
+    val isClone: Boolean = false,
+    val iconBitmap: ImageBitmap? = null,
     val isHidden: Boolean = false,
     val isFavorite: Boolean = false
 )
@@ -38,31 +44,42 @@ data class PanoramaUiState(
     val allApps: List<AppItem> = emptyList(),
     val favoriteApps: List<AppItem> = emptyList(),
     val filteredApps: List<AppItem> = emptyList(),
-    val hiddenPackageNames: Set<String> = emptySet(),
-    val favoritePackageNames: Set<String> = emptySet(),
-    val selectedLetter: Char? = null,
-    val isScrubbing: Boolean = false,
-    val isSettingsOpen: Boolean = false,
-    val currentTimeString: String = "",
-    val currentDateString: String = ""
+    val hiddenKeys: Set<String> = emptySet(),
+    val favoriteKeys: Set<String> = emptySet(),
+    val selectedLetter: Char? = null, // null or '☆' displays Favorites
+    val isSettingsOpen: Boolean = false
 )
 
 sealed interface PanoramaUiEvent {
-    data class OnLetterScrub(val letter: Char?) : PanoramaUiEvent
+    data class OnLetterSelected(val letter: Char?) : PanoramaUiEvent
+    data object OnClearLetterFilter : PanoramaUiEvent
     data class OnAppClicked(val app: AppItem) : PanoramaUiEvent
-    data class OnToggleAppVisibility(val packageName: String, val hide: Boolean) : PanoramaUiEvent
-    data class OnToggleFavorite(val packageName: String, val favorite: Boolean) : PanoramaUiEvent
+    data class OnToggleAppVisibility(val uniqueKey: String, val hide: Boolean) : PanoramaUiEvent
+    data class OnToggleFavorite(val uniqueKey: String, val favorite: Boolean) : PanoramaUiEvent
     data class SetSettingsVisible(val visible: Boolean) : PanoramaUiEvent
     data object OnSwitchLauncherRequested : PanoramaUiEvent
     data object OnRefreshApps : PanoramaUiEvent
 }
 ```
 
-## Key Technical Specifications
-1. **Manifest & Role:** Request `QUERY_ALL_PACKAGES`. `MainActivity` configured with `launchMode="singleTask"`, `clearTaskOnLaunch="true"`, `stateNotNeeded="true"`, and home launcher intent filters (`MAIN`, `CATEGORY_HOME`, `CATEGORY_DEFAULT`).
-2. **Transparent Wallpaper:** Theme `Theme.Panorama.Wallpaper` with transparent window background and `android:windowShowWallpaper="true"`. In code, apply `WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER`.
-3. **Right-aligned Clock & Date Header:** Text shadow for readability on all wallpapers. Tapping clock launches `AlarmClock.ACTION_SHOW_ALARMS`; tapping date launches `Intent.CATEGORY_APP_CALENDAR`.
-4. **Alphabet Wave Scrubber:** Right edge vertical strip (`☆`, `A-Z`, `#`). Smooth wave horizontal offset curve towards the left based on touch vertical distance. Subtle haptic feedback (`HapticFeedbackType.TextHandleMove`) on letter change.
-5. **Right-aligned App List:** Right-aligned app cards. When scrubbing letter, show apps starting with that letter. When idle, show favorite apps (`☆`). Safe icon conversion using `Bitmap.createBitmap` and `android.graphics.Canvas` wrapped in `remember(drawable)`.
-6. **Double-tap & Settings:** Double tap empty space triggers default launcher selector (`Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS` / `CATEGORY_HOME` intent chooser). Long press opens settings sheet/dialog.
-7. **Identity Watermark:** Display **"Panorama • by Natanael"** in settings bottom and subtly under header.
+## Critical Technical Specifications (120FPS & Dual/Clone Apps)
+1. **Dual/Clone Apps Support (`LauncherApps` & `UserManager`):**
+   - Query apps via `LauncherApps` and `UserManager.userProfiles`.
+   - `uniqueKey = "${info.componentName.packageName}_${info.componentName.className}_${userHandle.hashCode()}"`.
+   - Detect clone apps when `userHandle != android.os.Process.myUserHandle()`.
+   - Launch apps using `launcherApps.startMainActivity(info.componentName, userHandle, null, null)`.
+2. **Pre-decoded Bitmaps (`Dispatchers.Default`):**
+   - Convert `info.getBadgedIcon(0)` to `ImageBitmap` (compact `96x96` px) once in background thread during repository loading.
+   - Render `app.iconBitmap` directly in UI with zero runtime memory allocations or bitmap decoding during scroll.
+3. **Isolated Clock/Date Component:**
+   - Time/Date state managed locally inside `@Composable fun HeaderClockDate()` using `LaunchedEffect(Unit)` updating every 10 seconds.
+   - ViewModel state is NOT touched every second to eliminate unnecessary UI recompositions during scroll gestures.
+4. **Zero-Latency Wave Scrubber & Sticky Selection:**
+   - Single `pointerInput(Unit)` using `awaitEachGesture` to avoid gesture detector conflicts and touch-slop latency.
+   - GPU-accelerated `Modifier.graphicsLayer` transforms (`translationX`, `scaleX`, `scaleY`).
+   - Sticky letter selection: when finger lifts (`touchY = -1f`), `selectedLetter` remains active until cleared explicitly (by tapping `☆`, single-tapping background, pressing Back button, or launching an app).
+5. **Ergonomic Background Gestures & Navigation:**
+   - Single tap on empty space: `OnClearLetterFilter`.
+   - Double tap on empty space: `OnSwitchLauncherRequested`.
+   - Long press on empty space: `SetSettingsVisible(true)`.
+   - System Back button clears active letter filter if filtering, or closes settings if open.

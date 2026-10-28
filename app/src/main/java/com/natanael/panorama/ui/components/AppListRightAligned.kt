@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,12 +31,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.natanael.panorama.model.AppItem
-import com.natanael.panorama.ui.utils.rememberDrawableBitmap
 
 @Composable
 fun AppListRightAligned(
     apps: List<AppItem>,
-    isScrubbing: Boolean,
     selectedLetter: Char?,
     onAppClick: (AppItem) -> Unit,
     modifier: Modifier = Modifier
@@ -55,7 +52,7 @@ fun AppListRightAligned(
                 .padding(end = 50.dp, start = 24.dp),
             contentAlignment = Alignment.CenterEnd
         ) {
-            val emptyMessage = if (isScrubbing) {
+            val emptyMessage = if (selectedLetter != null && selectedLetter != '☆') {
                 "No apps starting with '$selectedLetter'"
             } else {
                 "No favorite apps yet\n(Long press background for Settings)"
@@ -82,7 +79,7 @@ fun AppListRightAligned(
         ) {
             items(
                 items = apps,
-                key = { app -> "${app.packageName}/${app.activityName}" }
+                key = { app -> app.uniqueKey }
             ) { app ->
                 AppItemRow(
                     app = app,
@@ -100,8 +97,6 @@ private fun AppItemRow(
     onAppClick: (AppItem) -> Unit,
     shadowStyle: Shadow
 ) {
-    val bitmap = rememberDrawableBitmap(drawable = app.icon)
-
     Row(
         modifier = Modifier
             .clickable(
@@ -114,12 +109,14 @@ private fun AppItemRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.End
     ) {
+        val labelText = if (app.isClone) "${app.label} (Clone)" else app.label
+
         Text(
-            text = app.label,
+            text = labelText,
             style = TextStyle(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White,
+                color = if (app.isClone) Color(0xFF80D8FF) else Color.White,
                 shadow = shadowStyle,
                 textAlign = TextAlign.End
             )
@@ -127,9 +124,9 @@ private fun AppItemRow(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        if (bitmap != null) {
+        if (app.iconBitmap != null) {
             Image(
-                bitmap = bitmap,
+                bitmap = app.iconBitmap,
                 contentDescription = app.label,
                 modifier = Modifier.size(28.dp)
             )
